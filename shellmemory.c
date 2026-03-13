@@ -31,8 +31,10 @@ struct program_line {
     char *line;
 };
 
-struct program_line linememory[MEM_SIZE];
-size_t next_free_line = 0;
+struct program_line linememory[FRAME_STORE_SIZE]; //frame store only
+int frame_used[FRAME_STORE_SIZE / PAGE_SIZE]; //will be 1 is frame is occupied
+size_t next_free_frame = 0; //next free frame
+
 
 void reset_linememory_allocator() {
     next_free_line = 0;
