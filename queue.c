@@ -136,6 +136,16 @@ struct PCB *dequeue_aging(struct queue *q) {
     return r;
 }
 
+// new helper function 
+struct PCB *queue_find_by_name(struct queue *q, const char *name) {
+        struct PCB *p = q->head;
+        while (p) {
+                if (strcmp(p->name, name) == 0) return p;
+                p = p->next;
+        }
+        return NULL;
+}
+
 bool is_queue_empty(struct queue *q) {
     if (q == NULL) return true;
     return q->head == NULL;

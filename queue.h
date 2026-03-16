@@ -27,3 +27,6 @@ struct PCB *dequeue_typical(struct queue *q);
 struct PCB *dequeue_aging(struct queue *q);
 
 bool is_queue_empty(struct queue *q);
+
+//new
+struct PCB *queue_find_by_name(struct queue *q, const char *name);

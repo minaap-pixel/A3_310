@@ -37,7 +37,7 @@ size_t next_free_frame = 0; //next free frame
 
 
 void reset_linememory_allocator() {
-    next_free_line = 0;
+    next_free_frame = 0; // changed to next_free_frame
     assert_linememory_is_empty();
 }
 
@@ -49,18 +49,18 @@ void assert_linememory_is_empty() {
 }
 
 void init_linemem() {
-    for (size_t i = 0; i < MEM_SIZE; ++i) {
+    for (size_t i = 0; i < FRAME_STORE_SIZE; ++i) { //changed to use FRAME_STORE_SIZE
         linememory[i].allocated = false;
         linememory[i].line = NULL;
     }
 }
 
 size_t allocate_line(const char *line) {
-    if (next_free_line >= MEM_SIZE) {
+    if (next_free_frame >= FRAME_STORE_SIZE) { // changed to fraes
         // out of memory!
         return (size_t)(-1);
     }
-    size_t index = next_free_line++;
+    size_t index = next_free_frame++;
     assert(!linememory[index].allocated);
 
     linememory[index].allocated = true;
@@ -132,4 +132,29 @@ char *mem_get_value(char *var_in) {
         }
     }
     return NULL;
+}
+
+// return frame number or -1 if out of memory
+int allocate_frame() {
+    if (next_free_frame >= FRAME_STORE_SIZE / PAGE_SIZE) return -1;
+    int frame = next_free_frame++;
+    frame_used[frame] = 1;
+    return frame;
+}
+
+// write a line in a specific frame slot
+// frame: frame number, offset: 0, 1, or 2
+void set_frame_line(int frame, int offset, const char *line) {
+    int index = frame * PAGE_SIZE + offset;
+    assert(index < FRAME_STORE_SIZE);
+    if (linememory[index].line) free(linememory[index].line);
+    linememory[index].allocated = true;
+    linememory[index].line = strdup(line);
+}
+
+// read line from a frame
+const char *get_frame_line(int frame, int offset) {
+    int index = frame * PAGE_SIZE + offset;
+    assert(linememory[index].allocated);
+    return linememory[index].line;
 }

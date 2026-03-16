@@ -431,8 +431,8 @@ void runSchedule(struct queue *q, const struct schedule_policy *policy) {
 // see doc in header file
 struct PCB *run_pcb_to_completion(struct PCB *pcb) {
     while (pcb_has_next_instruction(pcb)) {
-        size_t instr = pcb_next_instruction(pcb);
-        parseInput(get_line(instr));
+        const char *instr = pcb_next_instruction(pcb); //changed from size_t to const char
+        parseInput(instr);
     }
     free_pcb(pcb);
     return NULL;
@@ -442,7 +442,7 @@ struct PCB *run_pcb_to_completion(struct PCB *pcb) {
 struct PCB *run_pcb_for_n_steps(struct PCB *pcb, size_t n) {
     debug("run n steps: n is %ld\n", n);
     for (; n && pcb_has_next_instruction(pcb); --n) {
-        parseInput(get_line(pcb_next_instruction(pcb)));
+        parseInput(pcb_next_instruction(pcb));
     }
     debug("run n steps: looped to %ld\n", n);
     // The loop runs until either we've done n steps or the pcb is out of
@@ -506,7 +506,6 @@ void create_threads(void) {
 }
 
 
-
 int my_exec(char *args[], int args_size, bool MT) {
     assert(args_size >= 2);
     int background_exec = background; 
@@ -538,27 +537,38 @@ int my_exec(char *args[], int args_size, bool MT) {
         assert(q);
     }
 
+    // changes: allow same script twice (remove duplicate check) + share page table if script is loaded
 
     for (int n = 0; n < args_size; ++n) {
-        if (program_already_scheduled(q, args[n])) {
-            printf("Bad command: script named %s already scheduled\n", args[n]);
-            goto cleanup;
-        }
-        struct PCB *pcb = create_process(args[n]);
-        if (!pcb) {
-            printf("Failed to create process\n");
-            goto cleanup;
-        }
-        // once threads exist, need to use mutex
-        if (threads_created){
-            pthread_mutex_lock(&q_mutex);
-            policy->enqueue(q, pcb);
-            pthread_cond_signal(&q_cond); // Wake up a worker
-            pthread_mutex_unlock(&q_mutex);
-        }
-        else{
-            policy->enqueue(q, pcb);
-        }
+        struct PCB *pcb = NULL;
+
+    	// check if this script was already loaded earlier in this exec call
+    	struct PCB *existing = queue_find_by_name(q, args[n]);
+
+    	if (existing) {
+        	// reuse the page table — don't reload from disk
+        	pcb = malloc(sizeof(struct PCB));
+        	*pcb = *existing;           // copy all fields including page_table
+        	pcb->pc = 0;                // reset program counter
+        	pcb->next = NULL;
+       		pcb->name = strdup(existing->name);
+    	} else {
+        	pcb = create_process(args[n]);
+    	}
+
+    	if (!pcb) {
+        	printf("Failed to create process\n");
+        	goto cleanup;
+    	}
+    	if (threads_created){
+        	pthread_mutex_lock(&q_mutex);
+        	policy->enqueue(q, pcb);
+        	pthread_cond_signal(&q_cond);
+        	pthread_mutex_unlock(&q_mutex);
+    	}
+    	else{
+        	policy->enqueue(q, pcb);
+    	}
         
     }
 
