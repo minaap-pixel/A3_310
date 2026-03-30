@@ -62,7 +62,7 @@ const struct schedule_policy *get_policy(const char *policy_name) {
 }
 
 
-struct PCB *run_pcb_with_faults(struct PCB *pcb) {
+/*struct PCB *run_pcb_with_faults(struct PCB *pcb) {
     // current process
     int current_page = pcb->pc_page;
     int current_offset = pcb->pc_offset;
@@ -82,4 +82,15 @@ struct PCB *run_pcb_with_faults(struct PCB *pcb) {
     return process;
 
 
+}*/
+
+struct PCB *run_pcb_with_faults(struct PCB *pcb) {
+    if (pcb->page_table[pcb->pc_page] == -1) {
+        page_faults_handler(pcb, q);
+        return pcb; // Requeue the same process after handling page fault
+    }
+
+    return run_pcb_for_n_steps(pcb, 2);
+
 }
+

@@ -289,4 +289,6 @@ void page_faults_handler(struct PCB *pcb, struct queue *ready_queue) {
     fclose(script);
 
     pcb->page_table[next_page] = frame;
+
+    least_recently_used[frame] = ++used_time; // update time for LRU
 }
